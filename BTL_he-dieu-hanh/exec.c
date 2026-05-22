@@ -81,17 +81,25 @@ kexec(char *path, char **argv)
   p = myproc();
   uint64 oldsz = p->sz;
 
-  // Allocate some pages at the next page boundary.
+  // --- BẮT ĐẦU ĐOẠN ĐÃ ĐƯỢC CHỈNH SỬA ĐỒNG BỘ VỚI TRAP.C ---
+  // Allocate two pages at the next page boundary.
   // Make the first inaccessible as a stack guard.
-  // Use the rest as the user stack.
+  // Use the second as the user stack.
   sz = PGROUNDUP(sz);
   uint64 sz1;
-  if((sz1 = uvmalloc(pagetable, sz, sz + (USERSTACK+1)*PGSIZE, PTE_W)) == 0)
+  
+  // Cấp phát chính xác 2 trang (2*PGSIZE)
+  if((sz1 = uvmalloc(pagetable, sz, sz + 2*PGSIZE, PTE_W)) == 0)
     goto bad;
   sz = sz1;
-  uvmclear(pagetable, sz-(USERSTACK+1)*PGSIZE);
+  
+  // Xóa cờ PTE_U của trang đầu tiên để làm Guard Page
+  uvmclear(pagetable, sz - 2*PGSIZE);
+  
   sp = sz;
-  stackbase = sp - USERSTACK*PGSIZE;
+  // Đáy ngăn xếp hợp lệ nằm ở dưới trang Stack (tức là ngay trên Guard Page)
+  stackbase = sp - PGSIZE;
+  // --- KẾT THÚC ĐOẠN CHỈNH SỬA ---
 
   // Copy argument strings into new stack, remember their
   // addresses in ustack[].
