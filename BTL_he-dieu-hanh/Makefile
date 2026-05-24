@@ -148,7 +148,7 @@ UPROGS=\
         $U/_hello\
         $U/_ps\
         $U/_zombie\
-        $U/_overflow\
+        $U/_stackoverflow\
         $U/_test_pgflt\
 
 fs.img: mkfs/mkfs README $(UPROGS)
