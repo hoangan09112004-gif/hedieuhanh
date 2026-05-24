@@ -68,25 +68,24 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0) {
     /* ok */
-  } else if(r_scause() == 15 || r_scause() == 13) {
-    /* BAT LOI PAGE FAULT TRUC TIEP KHONG QUA VMFAULT */
-    uint64 fault_addr = r_stval();
+  } else if(r_scause() == 13 || r_scause() == 15) {
+    uint64 fault_va = r_stval(); 
     
-    // --- BỔ SUNG: KIỂM TRA RANH GIỚI GUARD PAGE ---
-    if(fault_addr >= p->sz - 2*PGSIZE && fault_addr < p->sz - PGSIZE) {
+    // Kiểm tra ranh giới Guard Page dựa trên USERSTACK
+    // Ranh giới dưới: p->sz - (USERSTACK+1)*PGSIZE
+    // Ranh giới trên: p->sz - USERSTACK*PGSIZE
+    if(fault_va >= p->sz - (USERSTACK+1)*PGSIZE && fault_va < p->sz - USERSTACK*PGSIZE) {
         printf("\n[KERNEL CANH BAO] FATAL: STACK OVERFLOW DETECTED!\n");
     } else {
         printf("\n[KERNEL CANH BAO] Segmentation Fault (Loi truy cap trang)!\n");
     }
-    // ----------------------------------------------
 
     printf("   -> Tien trinh: %s (PID: %d)\n", p->name, p->pid);
-    printf("   -> Dia chi vi pham (stval): %p\n", (void*)fault_addr);
+    printf("   -> Dia chi vi pham (stval): %p\n", (void*)fault_va);
     printf("   -> Ma loi (scause): %d\n", (int)r_scause());
     printf("[KERNEL] Tien trinh da bi tieu diet an toan de bao ve he thong.\n\n");
-    
-    kexit(-1);
-    
+
+    kexit(-1); 
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", (void*)r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", (void*)r_sepc(), (void*)r_stval());

@@ -85,20 +85,20 @@ kexec(char *path, char **argv)
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible as a stack guard.
   // Use the second as the user stack.
+ // Cấp phát số lượng trang: USERSTACK (cho Stack) + 1 (cho Guard Page)
   sz = PGROUNDUP(sz);
   uint64 sz1;
   
-  // Cấp phát chính xác 2 trang (2*PGSIZE)
-  if((sz1 = uvmalloc(pagetable, sz, sz + 2*PGSIZE, PTE_W)) == 0)
+  if((sz1 = uvmalloc(pagetable, sz, sz + (USERSTACK + 1)*PGSIZE, PTE_W)) == 0)
     goto bad;
   sz = sz1;
   
-  // Xóa cờ PTE_U của trang đầu tiên để làm Guard Page
-  uvmclear(pagetable, sz - 2*PGSIZE);
+  // Guard Page sẽ nằm ở vị trí thấp nhất của vùng vừa cấp phát
+  uvmclear(pagetable, sz - (USERSTACK + 1)*PGSIZE);
   
   sp = sz;
-  // Đáy ngăn xếp hợp lệ nằm ở dưới trang Stack (tức là ngay trên Guard Page)
-  stackbase = sp - PGSIZE;
+  // Đáy ngăn xếp hợp lệ nằm ngay trên Guard Page
+  stackbase = sp - USERSTACK*PGSIZE;
   // --- KẾT THÚC ĐOẠN CHỈNH SỬA ---
 
   // Copy argument strings into new stack, remember their
