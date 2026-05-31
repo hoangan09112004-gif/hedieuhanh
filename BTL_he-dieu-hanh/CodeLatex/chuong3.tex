@@ -1,0 +1,173 @@
+\chapter{Thiết kế và cài đặt}
+\section{Khởi tạo và thiết lập nền tảng}
+Tổng quát:
+\begin{itemize}
+    \item Cấu hình máy ảo ubuntu.
+    \item Clone mã nguồn hệ điều hành xv6.
+    \item Biên dịch thử nghiệm. 
+\end{itemize}
+\section{Triển khai cấu trúc tĩnh (tạo Guard Page) }
+Tổng quát:
+
+Bằng can thiệp vào cơ chế cấp phát bộ nhớ ảo trong file exec.c
+
+\begin{itemize}
+    \item Thêm không gian bộ nhớ bên dưới stack
+    \item Gán cờ trạng thái (flag): "Không hợp lệ"
+\end{itemize}
+Mục tiêu: Tạo thành vùng Guard Page
+
+\subsection{Cấu trúc không gian địa chỉ bộ nhớ và can thiệp cấp phát trong \textbf{exec.c}}
+\begin{figure}[H] % Chữ H in hoa ép ảnh nằm đúng vị trí dòng code này, không bị trôi
+    \centering % Căn giữa ảnh
+    % Chỉnh width=0.8\textwidth để ảnh to bằng 80% chiều rộng trang giấy
+    \includegraphics[width=0.8\textwidth]{image/so_do_khong_gian_dia_chi_ao_cua_tien_trinh.png} 
+    
+    \caption{Sơ đồ không gian địa chỉ ảo của tiến trình (virtual memmory layout) } % Tiên ảnh hiển thị bên dưới (Hình 3.1: ...)
+    \label{fig:sodo_khoi} % Nhãn để gọi ảnh (không hiển thị ra PDF, chỉ dùng cho code)
+\end{figure}
+
+
+
+Khi hệ điều hành khởi tạo một tiến trình mới, lệnh \textbf{fork()} sẽ nhân bản tiến trình, sau đó hàm \textbf{exec()} được gọi để nạp chương trình mới từ tệp ELF vào không gian bộ nhớ. Tại giai đoạn này, không gian cho User Stack sẽ được cấp phát. Để thiết lập Guard Page, hệ thống áp dụng chiến lược "Cấp phát dư thừa" (Over-allocation) kết hợp với cơ chế tước quyền truy cập thông qua các bước kỹ thuật sau:  
+\begin{itemize}
+    \item Cấp phát dư thừa (Over-allocation): Thay vì chỉ cấp phát đúng số lượng trang nhớ cần thiết cho ngăn xếp, hàm \textbf{uvmalloc()} được cấu hình để yêu cầu cấp phát dư thêm 1 trang nhớ, tức là \textbf{(USERSTACK + 1) * PGSIZE}. Việc hệ điều hành chủ động xin dư một lượng không gian (+1 trang nhớ = 4096 bytes) chính là để tạo ra một "vùng đệm" tự nhiên nằm ngay dưới đáy ngăn xếp. 
+    \item  Tước quyền truy cập để tạo "bẫy" (Guard Page Setup): Ngay sau khi cấp phát xong toàn bộ không gian, Kernel tính toán chính xác địa chỉ của trang nhớ dư thừa (trang dưới cùng) bằng biểu thức \textbf{sz - (USERSTACK+1)*PGSIZE}. Tiếp theo, hàm \textbf{uvmclear()} được gọi tại địa chỉ này để xóa cờ \textbf{PTE\_U} (User) trong Bảng phân trang (Page Table).
+    \item  Thao tác bit ở cấp độ phần cứng: Hàm \textbf{uvmclear()} can thiệp trực tiếp vào Bảng phân trang bằng phép toán thao tác bit \textbf{*pte \&= \~PTE\_U}. Phép toán này giữ nguyên tính hợp lệ của trang nhớ nhưng ép bit quyền người dùng về 0. Kết quả là trang bộ nhớ dư thừa biến thành một "vùng cấm" (Guard Page). Bất kỳ truy cập đọc/ghi nào từ chế độ User Mode vào trang này đều bị từ chối hoàn toàn.  
+\end{itemize}
+ 
+\subsection{Lưu đồ thuật toán can thiệp cấp phát bộ nhớ trong file exec.c}
+
+
+
+
+\begin{figure}[H] 
+    \centering
+    % Vũ khí bí mật: Giới hạn chiều cao tối đa bằng 85% trang giấy và giữ nguyên tỷ lệ
+    \includegraphics[width=\textwidth, height=0.85\textheight, keepaspectratio]{image/Luu_do_thuat_toan_cap_phat_stack.png} 
+    
+    \caption{Lưu đồ thuật toán cấp phát Stack và Guard Page} 
+    \label{fig:luu_do_exec} 
+\end{figure}
+
+Quy trình như sau:
+\begin{itemize}
+    \item Bắt đầu nạp chương trình mới khi hệ thống gọi hàm exec
+    \item Cấp phát bộ nhớ: Hệ thống tính toán kích thước Stack và gọi hàm \textbf{uvmalloc()} để cấp phát số lượng trang nhớ là \textbf{USERSTACK + 1}. Nếu quá trình cấp phát gặp lỗi (trả về 0), hệ thống sẽ rẽ nhánh để báo lỗi (go to bad).
+    \item Xác định vùng đệm: Nếu cấp phát thành công (True), hệ điều hành tính toán địa chỉ bắt đầu của khối trang nhớ cuối cùng bằng công thức \textbf{sz - (USERSTACK + 1) * PGSIZE}.
+    \item Thiết lập Guard Page: Gọi hàm \textbf{uvmclear()} tại địa chỉ vừa xác định. Sau đó, dùng phép toán \textbf{*pte \&= \~PTE\_U} được thực thi để tước bỏ cờ \textbf{PTE\_U}, định danh trang nhớ này thành Guard Page.
+    \item Hoàn tất ánh xạ: Hệ thống đẩy đỉnh Stack mới \textbf{(sp = sz)} và xác định vị trí đáy Stack hợp lệ \textbf{(stackbase = sp - USERSTACK * PGSIZE)} trước khi kết thúc luồng cấp phát.
+\end{itemize}
+\subsection{Các bước thực hiện}
+Các bước thực hiện:
+\begin{itemize}
+    \item Môi trường: cửa sổ Terminal
+    \item Hệ điều hành: xv6-RISCV: \textbf{cd OS\_Lab/Tutorial4/xv6-riscv}
+    \item Mở file mã nguồn kernel/exec.c để sửa và nạp chương trình: \textbf{nano kernel/exec.c}
+    \item Tìm đền và sửa khu vực mã nguồn cấp phát stack cho người dùng: \textbf{USERSTACK}
+   
+    \item Biên dịch để kiểm tra lỗi: \textbf{make qemu}
+\end{itemize}
+
+
+\section{Xây dựng hành vi động (Xử lý bẫy Page Fault)}
+Tổng quát:
+Nghiên cứu cơ chế xử lý ngắt trung tâm và can thiệp vào trình xử lý ngắt usertrap() trong file trap.c
+\begin{itemize}
+    \item Xây dựng thuật toán kiểm tra mã ngắt (13 or 15 trong page Fault ) và địa chỉ lỗi từ thanh ghi stval.
+    \item System: 
+    \begin{itemize}
+        \item Nhận diện vi phạm Guard Page
+        \item In thông báo lỗi và thông tin chi tiết của tiến trình.
+        \item Tiêu diệt tiến trình ngay lập tức ( (gọi hàm kexit(-1)) để bảo vệ kernel.
+    \end{itemize}
+\end{itemize}
+
+
+\subsection{Lưu đồ xử lý ngắt trung tâm (Trap handing flow)}
+Lưu đồ mô tả luồng phản hồi của hệ điều hành khi một tiến trình vô tình chạm vào vùng Guard Page đã được thiết lập:
+\begin{itemize}
+    \item Phát sinh ngắt: Khi lỗi xảy ra, phần cứng lập tức nạp địa chỉ ảo gây lỗi và nguyên nhân ngắt, sau đó chuyển hướng xuống luồng xử lý của CPU vào hàm usertrap().
+    \item Phân loại ngắt: Hệ thống kiểm tra xem mã ngắt có phải là Page Fault hay không. Nếu không hệ thống trôi xuống xử lý ngắt các thiết bị khác.
+    \item Trích xuất và so sánh: Đọc địa chỉ ảo gây lỗi vào biến \textbf{fault\_va} và đưa vào thuật toán để kiểm tra xem có nằm trong Guard Page không. Dựa vào kết quả kiểm tra, luồng xử lý sẽ rẽ nhánh để in ra cảnh báo "Stack over flow detected" nếu vi phạm ranh giới và "segmentation fault!" nêu sai phạm khác.
+    \item Xử lý hậu quả: Cả hai loại lỗi đều phải được in chi tiết về tiến trình vi phạm (pid, địa chỉ lỗi, mã lỗi) rồi gọi hàm kêt thức tiến trình để bảo vệ kernel.
+\end{itemize}
+\begin{figure}[H] 
+    \centering
+    % Vũ khí bí mật: Giới hạn chiều cao tối đa bằng 85% trang giấy và giữ nguyên tỷ lệ
+    \includegraphics[width=\textwidth, height=0.85\textheight, keepaspectratio]{image/Luudoxulyngat.png} 
+    
+    \caption{Lưu đồ xử lý ngắt trung tâm (Trap handing flow)} 
+    \label{fig:luu_do_exec} 
+\end{figure}
+
+\subsection{Cài đặt thuật toán nhận diện nguyên nhân lỗi (Can thiệp trap.c)}
+
+Dựa trên kiến trúc RISC-V của xv6, nguyên nhân gây ngắt sẽ tự động được phần cứng tự động lưu vào thanh ghi scause. Đối với lỗi truy cập bộ nhớ do Guard Page gây ra, mã trả về số 13 (\textbf{
+Load page fault - Lỗi khi đọc}) hoặc 15 ( \textbf{Store page fault - lỗi khi ghi}). 
+
+Nhóm em can thiệp trực tiếp vào hàm \textbf{usertrap(void)}, nơi xử lý ngắt ở chế độ \textbf{USER MODE}. Qua một vòng kiểm tra thanh ghi r\_cause() để bắt lỗi tín hiệu vi phạm page fault (\textbf{ if(r\_scause() == 13 || r\_scause() == 15)}). Sau đó, địa chỉ ảo mà tiến trình cố gắng truy cập trái phép được trích xuất từ thanh ghi \textbf{stval} thông qua biến \textbf{uint64 fault\_addr = r\_stval()}.
+
+Tiếp theo, thuật toán nhận dạng được kích hoạt để phân biệt rạch ròi giữa tràn ngăn xếp và các lỗi truy cập con trỏ khác. Thuật toán so sánh fault\_va  với ranh giới của Guard Page dựa trên USERSTACK :
+\begin{itemize}
+    \item Ranh giới dưới: \textbf{p->sz -(USERSTACK+1)*PGSIZE} 
+    \item Ranh giới trên: \textbf{p->sz - USERSTACK*PGSIZE}
+    \item  Nếu \textbf{fault\_va} nằm trong khoảng ranh giới này, kết luận tràn Stack (Stack overflow) và xuất cảnh báo: \textbf{[KERNEL CANH BAO] FATAL: STACK OVERFLOW DETECTED!}.
+    \item Nếu không thỏa mãn ranh giới trên, hệ thống kết luận đây là lỗi truy cập trang và xuất cảnh báo: \textbf{[KERNEL CANH BAO] Segmentation Fault (Loi truy cap trang)!}.
+\end{itemize}
+\subsection{Thiết kế luồng phản hồi và chấm dứt tiến trình an  }
+Mục tiêu của cơ chế ngắt là ngăn chặn các lỗi vi phạm vùng nhớ từ User Space, không cho phép luồng xử lý làm crash hệ thống. Kernel cần bắt được nguyên nhân lỗi và kết thúc tiến trình theo cách an toàn thay vì để hệ thống rơi vào trạng thái không ổn định.
+
+Sau khi phân loại và in ra dòng chữ cảnh báo tương ứng \textbf{(Stack Overflow hoặc Segmentation Fault)}, hệ thống phản hồi tiếp bằng cách xuất ra một loạt thông tin chi tiết để hỗ trợ quá trình debug: Tên tiến trình \& PID, Địa chỉ vi phạm \textbf{(stval)}, và Mã lỗi \textbf{(scause)}. Cuối cùng, thông báo [KERNEL] Tien trinh da bi tieu diet an toan de bao ve he thong được in ra.
+
+
+Ngay lập tức, hàm \textbf{kexit(-1)}; được gọi để thực thi. Thay vì chỉ đánh dấu cờ \textbf{p->killed = 1} và chờ hệ thống xử lý sau như cơ chế cũ, lệnh này tiến hành dọn dẹp sạch sẽ bộ nhớ, cô lập và kết thúc tiến trình ngay tại chỗ. Nhờ luồng xử lý chấm dứt tức thời và an toàn này, các tiến trình khác và kernel xv6 vẫn tiếp tục hoạt động bình thường, hạn chế triệt để nguy cơ Kernel Panic.
+
+\subsection{Quy trình thực hiện}
+\begin{itemize}
+    \item Di chuyển vào hệ điều hành ảo xv6: \textbf{cd ~/OS\_Lab/Tutorial4/xv6-riscv}
+    \item Mở trình soạn thảo mã nguồn trên VScode: \textbf{code .}
+    \item Tìm file sử lý ngắt:\textbf{trap.c}
+    \item Chèn thuật toán nhận dạng Guard Page.
+    \begin{itemize}
+        \item Vị trí chèn: Ngay sau khối lệnh xử lý ngắt thiết bị \textbf{denvintr()}:
+    
+    \begin{verbatim}
+        else if((which_dev = devintr()) != 0) {}
+    \end{verbatim}
+        \item \textbf{Thuật toán Phân luồng Page Fault và Nhận diện Guard Page.}
+     \begin{verbatim}
+        else if(r_scause() == 13 || r_scause() == 15) {
+    uint64 fault_va = r_stval(); 
+    
+    // Kiểm tra ranh giới Guard Page dựa trên USERSTACK
+    // Ranh giới dưới: p->sz - (USERSTACK+1)*PGSIZE
+    // Ranh giới trên: p->sz - USERSTACK*PGSIZE
+    if(fault_va >= p->sz - (USERSTACK+1)*PGSIZE && fault_va 
+    < p->sz - USERSTACK*PGSIZE) {
+        printf("\n[KERNEL CANH BAO] FATAL: STACK OVERFLOW DETECTED!\n");
+    } else {
+        printf("\n[KERNEL CANH BAO] Segmentation Fault (Loi truy cap 
+        trang)!\n");
+    }
+
+    printf("   -> Tien trinh: %s (PID: %d)\n", p->name, p->pid);
+    printf("   -> Dia chi vi pham (stval): %p\n", (void*)fault_va);
+    printf("   -> Ma loi (scause): %d\n", (int)r_scause());
+    printf("[KERNEL] Tien trinh da bi tieu diet an toan de bao ve he
+    thong.\n\n");
+
+    kexit(-1); 
+  
+    \end{verbatim}
+    
+        \item Lý do chọn vị trí can thiệp sau \textbf{devintr()}:\newline Nhằm tối ưu hóa 
+         hiệu năng cốt lõi của kernel. Trong quá trình vận hành, các ngắt ngoại vi (đặc biệt là ngắt Timer) có tần xuất xảy ra cực cao. Bằng cách thiết lập luồng điều khiển ưu tiên xử lý và giải phóng các thiết bị ngắt này trước CPU tránh được hao phí khi thực hiện các phép toán kiểm tra ranh giới địa chỉ Guard Page lặp lại không cần thiết. Thuật toán chuẩn đoán phân luồng lỗi (mã 13 và 15) chỉ được kích hoạt khi hệ thống đã thực hiện xong các sự kiện phần cứng hợp lệ để đảm bảo tính trôi chảy và đáp ứng thời gian thực của hệ điều hành.
+    \end{itemize}
+    \item Biên dịch và khởi chạy Kernel:
+    \begin{itemize}
+        \item Xóa bỏ file biên dịch cũ (dọn dẹp hệ thống):\textbf{make clean}
+        \item Biên dịch hệ điều hành và khởi động máy ảo:\textbf{make qemu}
+    \end{itemize}
+\end{itemize}
+\textbf{Note:} khi thoát khỏi máy ảo (\textbf{CRTL+A+X+Enter}) tiến trình QEMU sẽ bị ngắt, toàn bộ tài nguyên sẽ được dọn dẹp sạch, trả lại nguyên vẹn ban đầu.

@@ -150,6 +150,7 @@ UPROGS=\
         $U/_zombie\
         $U/_stackoverflow\
         $U/_test_pgflt\
+        $U/_master_test\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

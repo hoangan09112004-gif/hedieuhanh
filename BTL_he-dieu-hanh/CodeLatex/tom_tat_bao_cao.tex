@@ -1,0 +1,29 @@
+% ==============================================
+% LỜI NÓI ĐẦU
+% ==============================================
+\chapter*{Lời nói đầu}
+\addcontentsline{toc}{chapter}{Lời nói đầu}
+
+Bài tập lớn môn Hệ điều hành với đề tài "Implementing guard pages to detect stack overflow and invalid access" đánh dấu một cột mốc quan trọng trong quá trình học tập của nhóm em tại Trường Đại học Bách Khoa Hà Nội. Đây không chỉ là một bài tập lớn cốt lõi của môn học mà còn là cơ hội để em vận dụng những kiến thức lý thuyết về quản lý bộ nhớ, kiến trúc hệ điều hành vào một bài toán thực tế, thể hiện khả năng lập trình hệ thống (system programming) và can thiệp mã nguồn nhân (kernel).
+
+Trong bối cảnh các phần mềm ngày càng phức tạp, an toàn bộ nhớ và tính ổn định của hệ thống đóng vai trò vô cùng thiết yếu. Hiện tượng tràn ngăn xếp (stack overflow) và truy cập bộ nhớ không hợp lệ là những lỗi phổ biến nhưng có thể gây ra hậu quả nghiêm trọng, từ sập hệ thống (crash) đến các lỗ hổng bảo mật. Xuất phát từ thực tiễn này, em quyết định đi sâu vào nghiên cứu và sửa đổi mã nguồn của hệ điều hành xv6 để xây dựng một cơ chế bảo vệ tự động. Dự án không chỉ giúp phát hiện sớm các truy cập trái phép mà còn đảm bảo các tiến trình (processes) hoạt động biệt lập, an toàn và ổn định hơn.
+
+Dự án được xây dựng thông qua việc can thiệp trực tiếp vào các chức năng cốt lõi như quản lý bộ nhớ ảo (virtual memory) và xử lý ngắt (trap). Cơ chế bao gồm việc cấp phát một trang bảo vệ (guard page) nằm ngay dưới user stack, tự động phát hiện page fault khi stack vượt quá giới hạn và xử lý tiến trình vi phạm. Đặc biệt, hệ thống đi kèm với các chương trình ở không gian người dùng (user-level programs) để kiểm thử nghiêm ngặt tính đúng đắn và hiệu quả của cơ chế bảo vệ, giúp nâng cao độ tin cậy của toàn bộ hệ điều hành.
+
+Quá trình thực hiện dự án này không thể thành công nếu thiếu sự hướng dẫn tận tình từ thầy giáo, sự phối hợp của các bạn trong nhóm. Trước hết, em xin bày tỏ lòng biết ơn sâu sắc đến thầy Phạm Văn Tiến, giảng viên hướng dẫn, người đã tận tâm theo sát và truyền đạt những kiến thức nền tảng quý báu giúp em hoàn thiện dự án này. Bên cạnh đó, em cũng xin gửi lời tri ân đến các cộng sự trong nhóm là bạn An và bạn Thành, những người đã cùng em chia sẻ công việc từ khâu thiết kế đến lập trình và kiểm thử để đạt được kết quả tốt nhất.
+
+Do thời gian thực hiện có hạn và kinh nghiệm lập trình kernel còn hạn chế, chắc chắn bài làm của nhóm em không tránh khỏi thiếu sót. Em rất mong nhận được những góp ý từ thầy và các bạn để có thể hoàn thiện giải pháp một cách tốt nhất.
+
+Em xin chân thành cảm ơn!
+
+\newpage
+
+% ==============================================
+% LỜI CAM ĐOAN
+% ==============================================
+\chapter*{Lời cam đoan}
+\addcontentsline{toc}{chapter}{Lời cam đoan}
+
+
+Nhóm em xin cam đoan toàn bộ nội dung được trình bày trong bài tập lớn “Implementing guard pages to detect stack overflow and invalid access" là kết quả quá trình tìm hiểu và thực hiện của em. Các dữ liệu được nêu trong bài tập lớn là hoàn toàn trung thực, phản ánh đúng kết quả thực hiện thực tế. Mọi thông tin trích dẫn đều tuân thủ các quy định về sở hữu trí tuệ; các tài liệu tham khảo được liệt kê rõ ràng. Em xin chịu hoàn toàn trách nhiệm với những nội dung được viết trong đồ án này.
+

@@ -1,0 +1,65 @@
+\chapter{TỔNG QUAN VỀ BÀI TẬP LỚN}
+\section{Đặt vấn đề}
+
+Quản lý bộ nhớ là một trong những chức năng cốt lõi và phức tạp nhất của bất kỳ hệ điều hành nào. Trong quá trình thực thi, mỗi tiến trình (process) được hệ điều hành cấp phát một vùng nhớ dành riêng cho ngăn xếp (stack) để lưu trữ các biến cục bộ, địa chỉ trả về và các tham số của hàm. Tuy nhiên, kích thước của ngăn xếp thường có giới hạn.
+
+Trong hệ điều hành xv6 nguyên bản, không gian bộ nhớ của người dùng (user space) được tổ chức khá đơn giản. Nếu một chương trình liên tục gọi hàm đệ quy sâu hoặc cấp phát các mảng cục bộ quá lớn, ngăn xếp sẽ phình to và vượt quá không gian một trang (page) được cấp phát ban đầu. Hiện tượng này gọi là tràn ngăn xếp (stack overflow). Do xv6 nguyên bản thiếu cơ chế kiểm tra ranh giới, vùng nhớ tràn này có thể đè lên các dữ liệu quan trọng khác hoặc mã lệnh của chính chương trình, dẫn đến việc dữ liệu bị hỏng (data corruption), chương trình chạy sai logic, hoặc gây sập toàn bộ hệ thống (kernel panic).
+
+Từ thực tiễn đó, bài toán đặt ra là hệ điều hành cần một cơ chế bảo vệ chủ động để ngăn chặn các truy cập bộ nhớ bất hợp pháp do tràn ngăn xếp gây ra. Giải pháp "Guard Pages" (Trang bảo vệ) ra đời nhằm giải quyết triệt để vấn đề này. Bằng cách chèn một trang bộ nhớ không hợp lệ (unmapped page) ngay sát dưới cùng của ngăn xếp, bất kỳ nỗ lực nào truy cập vượt quá giới hạn ngăn xếp sẽ chạm vào trang bảo vệ này, ngay lập tức tạo ra một lỗi bộ nhớ (page fault) để hệ điều hành kịp thời bắt giữ và xử lý.
+
+\section{Mục tiêu của nghiên cứu}
+Dựa trên vấn đề đã đặt ra, đề tài hướng đến một mục tiêu tổng quát là: Nghiên cứu, thiết kế và tích hợp thành công cơ chế Guard Pages vào hệ điều hành xv6 nhằm phát hiện và ngăn chặn lỗi tràn ngăn xếp ở không gian người dùng.
+
+Để đạt được mục tiêu tổng quát, nhóm đặt ra các mục tiêu cụ thể như sau:
+
+\begin{itemize}
+
+     \item Về mặt lý thuyết: Hiểu rõ kiến trúc quản lý bộ nhớ ảo (virtual memory), sơ đồ tổ chức bộ nhớ (memory layout) của tiến trình, và cơ chế xử lý ngắt/ngoại lệ (trap và interrupt) trong hệ điều hành xv6.
+
+     \item Về mặt thiết kế và cài đặt: Chỉnh sửa cơ chế cấp phát bộ nhớ khi khởi tạo tiến trình (trong exec.c) để định tuyến lại vị trí của user stack và chèn một Guard Page không có quyền truy cập ngay dưới stack.
+     \begin{itemize}
+         \item Tinh chỉnh trình xử lý ngắt (trong trap.c) để hệ điều hành nhận diện chính xác lỗi bộ nhớ (page fault) phát sinh do chạm vào Guard Page.
+         \item Xây dựng kịch bản xử lý an toàn: Khi phát hiện lỗi tràn ngăn xếp, hệ điều hành tiến hành thu hồi tài nguyên và kết thúc (kill) tiến trình vi phạm một cách biệt lập, đảm bảo không ảnh hưởng đến sự ổn định của kernel và các tiến trình khác.
+     \end{itemize}
+
+      \item Về mặt kiểm thử: Xây dựng các chương trình kiểm thử ở mức người dùng (user-level programs) cố tình tạo ra lỗi tràn ngăn xếp để chứng minh tính đúng đắn, an toàn và hiệu quả của giải pháp đã cài đặt.
+
+   
+\end{itemize} 
+\section{Đối tượng và phạm vi nghiên cứu}
+Đối tượng nghiên cứu:
+\begin{itemize}
+    \item Mã nguồn cốt lõi của hệ điều hành xv6, đặc biệt tập trung vào các tệp quản lý tiến trình bộ nhớ như:exec.c, vm.c, syscall.c và trap.c.
+    \item Các khái niệm và cấu trúc dữ liệu liên quan: Bảng phân trang Page table, Cờ phân quyền bộ nhớ (PTE\_U, PTE\_W, PTE\_P), cơ chế xử lý Page Fault.
+\end{itemize}
+Phạm vi và giới hạn của đề tài: 
+\begin{itemize}
+    \item Phạm vi áp dụng: Đề tài chỉ tập trung xử lý và cấu hình Guard Page để bảo vệ ngăn xếp của không gian người dùng (User stack), không can thiệp vào ngăn xếp của nhân.
+    \item Cơ chế xử lý: khi tiến trình phình to chạm vào Guard Page, hệ thống sẽ chỉ dừng lại ở phát hiện lỗi và kết thúc tiến trình (kill) mà không ảnh hưởng đến các tiến trình khác. Lưu ý: không bao gồm cơ chế cấp phát bộ nhớ động để mở rộng stack.
+    \item Môi trường kiểm thử: Các quá trình biên dịch, chạy thử và đánh giá đều được thực hiện trên máy ảo QEMU giả lập kiến trúc RISC-V.
+\end{itemize}
+\section{Phương pháp thực hiện}
+\begin{itemize}
+    \item Cài đặt và cấu hình môi trường biên dịch mã nguồn hệ điều hành trên máy ảo Ubuntu.
+    \item Tìm hiểu về Memmory Management và cấu trúc Page Table.
+    \item Nghiên cứu luồng cấp phát không gian bộ nhớ cho tiến trình mới. 
+    \item Thiết kế giải pháp: cấp phát dư thừa không gian bộ nhớ để tạo thành một vùng  Guard Page ( giữa user stack và data/text) trong sơ đồ không gian địa chỉ ảo của tiến trình (virtual memmory layout). Sau đó tước cờ phân quyền bộ nhớ người dùng (PTE\_U). 
+    \item Nghiên cứu lý thuyết luồng phần cứng ( cụ thể: file xử lý ngắt trung tâm) để đề xuất luồng xử lý lỗi Page Fault)
+    \item Xây dựng thuật toán nhận dạng nguyên nhân lỗi trên hệ thống xử lý ngắt trung tâm (usertrap()) gồm: kiểm tra thanh ghi scause với mã lỗi và trích xuất địa chỉ vi phạm từ thanh ghi stval.
+    \item Thiết kế hành vi phản hồi của Hệ Điều Hành và luồng để chấm dứt tiến trình an toàn để tránh kernel panic. 
+    \item Thiết kế, phát triển, tối ưu, tích hợp chương trình kiểm thử vào môi trường xv6 để kiểm tra sức chịu đựng của stack.
+    \item Thực nghiệm và đánh giá: 
+    \begin{itemize}
+        \item Đối chiếu hành vi trước và sau cải tiến 
+        \item Kiểm tra các tiêu chí để đánh giá sự ổn định lâu dài trong môi trường đa tiến trình.
+        \item Lập bảng so sánh hiệu quả của cơ chế Guard Page đối với Stack Overflow, NULL Pointer và tính đa nhiệm. 
+    \end{itemize}
+\end{itemize}
+\section{Bố cục báo cáo}
+\begin{itemize}
+    \item Chương 1: Tổng quan
+    \item Chương 2: Cơ sở lý thuyết
+    \item Chương 3: Thiết kế và cài đặt
+    \item Chương 4: Thực nghiệm và đánh giá
+    \item Chương 5: Kết luận 
+\end{itemize}

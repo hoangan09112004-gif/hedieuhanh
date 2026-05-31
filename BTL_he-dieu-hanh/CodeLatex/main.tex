@@ -1,0 +1,100 @@
+\documentclass[12pt, a4paper]{report}
+
+% 1. Cài đặt ngôn ngữ và font chữ (Times New Roman)
+\usepackage[utf8]{vietnam}
+\usepackage{mathptmx}
+
+% 2. Cài đặt giãn dòng 1.5
+\usepackage{setspace}
+\onehalfspacing
+
+% 3. Cài đặt lề chuẩn
+\usepackage[top=2cm, bottom=2cm, left=3cm, right=2cm]{geometry}
+
+% 4. Các gói hỗ trợ bảng biểu, hình ảnh và toán học
+\usepackage{graphicx}
+\graphicspath{{image/}}
+\usepackage{float} % Gói hỗ trợ ép ảnh nằm cố định tại chỗ
+\usepackage{tabularx} % Bắt buộc phải có để vẽ bảng đánh giá
+\usepackage{array}
+\usepackage{xltabular} % Căn lùi ngắt bảng phù hợp
+\usepackage{pdfpages} % Bắt buộc phải có để chèn trang bìa PDF của trường
+\usepackage{amsmath} % Hỗ trợ viết công thức toán học cho Chương 3
+\usepackage{amsfonts} % Hỗ trợ font toán học
+\usepackage[hidelinks]{hyperref} % Bật tính năng click vào mục lục
+
+% Các gói bảng biểu bổ sung cho bảng phân công
+\usepackage{array} % Chống tràn ngang, gập dòng
+\usepackage{multirow} % Hỗ trợ gộp dòng
+\usepackage{calc} % Tính toán độ rộng
+
+% 5. Format lại tiêu đề chương (Loại bỏ chữ "Chương 1" mặc định to đùng)
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\Large\bfseries}{\chaptertitlename\ \thechapter}{10pt}{\Large}
+\titlespacing*{\chapter}{0pt}{-20pt}{20pt} 
+
+% 6. Cài đặt Header và Footer
+\usepackage{fancyhdr}
+\setlength{\headheight}{14pt} % Thêm dòng này để fix lỗi cảnh báo
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Bài tập lớn Hệ Điều Hành}
+\fancyhead[R]{\small Trường Điện – Điện tử}
+\fancyfoot[C]{\thepage} % Số trang ở giữa footer
+\renewcommand{\headrulewidth}{0.4pt} % Đường kẻ ở header
+
+% ==============================================
+% BẮT ĐẦU VĂN BẢN
+% ==============================================
+\begin{document}
+
+% ==============================================
+% PHẦN 1: TRANG BÌA
+% ==============================================
+\input{bia.tex}
+
+% ==============================================
+% PHẦN 2: CÁC BIỂU MẪU ĐÁNH GIÁ
+% ==============================================
+
+
+% ==============================================
+% PHẦN 3: LỜI NÓI ĐẦU & CAM ĐOAN
+% ==============================================
+\cleardoublepage
+\pagenumbering{roman} 
+\input{tom_tat_bao_cao.tex}
+
+\newpage
+\input{bang_phan_cong.tex} % Thêm đuôi .tex cho chuẩn
+
+% ==============================================
+% PHẦN 4: CÁC DANH MỤC
+% ==============================================
+\newpage
+\tableofcontents % Mục lục
+\newpage
+\listoffigures   % Danh mục hình vẽ
+\newpage
+\listoftables    % Danh mục bảng biểu
+
+% ==============================================
+% PHẦN 5: NỘI DUNG CHÍNH
+% ==============================================
+\cleardoublepage
+\pagenumbering{arabic}
+
+\input{chuong1.tex}
+\input{chuong2.tex}
+\input{chuong3.tex}
+\input{chuong4.tex}
+\input{chuong5.tex}
+
+% ==============================================
+% PHẦN 6: TÀI LIỆU THAM KHẢO
+% ==============================================
+\newpage
+\input{tai_lieu_tham_khao.tex}
+
+\end{document}

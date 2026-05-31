@@ -1,0 +1,241 @@
+\chapter{Thực nghiệm và đánh giá }
+
+\section{Kịch bản kiểm thử}
+Trong quá trình thực nghiệm, nhóm xây dựng các kịch bản kiểm thử nhằm đánh giá khả năng phát hiện lỗi truy cập bộ nhớ sai của cơ chế Guard Page trong hệ điều hành xv6. Các bài kiểm thử tập trung vào hai nhóm lỗi chính: lỗi tràn stack do gọi đệ quy quá sâu và lỗi truy cập địa chỉ không hợp lệ như NULL pointer.
+
+Mục tiêu của các kịch bản kiểm thử là kiểm tra xem hệ thống có thể phát hiện đúng tiến trình gây lỗi, in ra thông tin cảnh báo phù hợp và chấm dứt tiến trình vi phạm mà không làm ảnh hưởng tới toàn bộ hệ thống hay không. Ngoài ra, nhóm cũng quan sát trạng thái của shell sau khi tiến trình lỗi bị xử lý để đánh giá khả năng phục hồi của hệ thống.
+
+Các kịch bản kiểm thử chính gồm:
+
+\begin{itemize}
+    \item \textbf{Kiểm thử Stack Overflow:} chương trình người dùng gọi đệ quy liên tục để làm stack phát triển vượt quá giới hạn cho phép. Khi stack chạm vào Guard Page, hệ thống cần sinh Page Fault và nhận diện chính xác đây là lỗi tràn ngăn xếp stackoverflow và tiêu diệt tiến trình một cách an .
+    
+    \item \textbf{Kiểm thử NULL pointer:} chương trình người dùng cố tình ghi dữ liệu vào địa chỉ 0x0. Đây là địa chỉ không hợp lệ, do đó hệ thống cần phát hiện Store Page Fault (mã ngắt 15). Thuật toán phải phân biệt được ranh giới và kết luận đây là lỗi truy cập trang (segmentation fault) thống thường chứ không phải lỗi tràn stack.
+    
+    \item \textbf{Kiểm thử tiến trình bình thường:} chạy các chương trình không gây lỗi để đảm bảo cơ chế Guard Page không ảnh hưởng tới hoạt động thông thường của hệ thống.
+    
+    \item \textbf{Kiểm thử nhiều lần:} chạy lặp lại các chương trình gây lỗi để kiểm tra hệ thống có bị treo, panic hoặc rơi vào vòng lặp xử lý lỗi hay không.
+\end{itemize}
+
+Thông qua các kịch bản trên, nhóm có thể đánh giá cả tính đúng đắn và tính ổn định của cơ chế đã cài đặt.
+
+\begin{figure}[H] 
+    \centering
+    % Vũ khí bí mật: Giới hạn chiều cao tối đa bằng 85% trang giấy và giữ nguyên tỷ lệ
+    \includegraphics[width=\textwidth, height=0.85\textheight, keepaspectratio]{image/sodotuantukichbanstackoverflo.png} 
+    
+    \caption{Sơ dồ tuần tự của kịch bản kiểm thử stackoverflow} 
+    \label{fig:luu_do_exec} 
+\end{figure}
+
+
+\begin{figure}[H] 
+    \centering
+    % Vũ khí bí mật: Giới hạn chiều cao tối đa bằng 85% trang giấy và giữ nguyên tỷ lệ
+    \includegraphics[width=\textwidth, height=0.85\textheight, keepaspectratio]{image/sodotuantukichbantest_pgflt.png} 
+    
+    \caption{Sơ dồ tuần tự của kịch bản kiểm thử test\_pgflt để test segmentation fault} 
+    \label{fig:luu_do_exec} 
+\end{figure}
+\section{Tập hợp và đối chiếu trước và sau cải tiến}
+
+Trước khi cải tiến, xv6 chưa có cơ chế bảo vệ rõ ràng tại ranh giới vùng stack của tiến trình người dùng. Khi xảy ra lỗi tràn stack, tiến trình có thể tiếp tục ghi vượt quá vùng nhớ hợp lệ hoặc gây ra lỗi khó xác định. Điều này làm cho việc debug trở nên khó khăn, đồng thời có nguy cơ khiến hệ thống hoạt động không ổn định.
+
+Sau khi bổ sung Guard Page, một trang bảo vệ được đặt tại ranh giới vùng stack. Trang này không được cấp quyền truy cập, vì vậy khi stack phát triển vượt quá giới hạn và chạm vào Guard Page, phần cứng sẽ sinh ra Page Fault. Kernel sau đó đọc các thông tin như \texttt{scause} và \texttt{stval} để xác định nguyên nhân lỗi và địa chỉ gây lỗi.
+
+Kết quả đối chiếu trước và sau cải tiến được mô tả như sau:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{3.5cm}|p{5cm}|p{5cm}|}
+\hline
+\textbf{Tiêu chí} & \textbf{Trước khi cải tiến} & \textbf{Sau khi cải tiến} \\
+\hline
+Phát hiện Stack Overflow 
+& Chưa phát hiện rõ ràng, lỗi có thể gây ghi đè vùng nhớ khác. 
+& Phát hiện khi tiến trình truy cập vào Guard Page. \\
+\hline
+Thông tin lỗi 
+& Thông báo lỗi còn chung chung, khó xác định nguyên nhân. 
+& In ra thông báo lỗi Page Fault (stackoverflow hoặc segmentation fault), kèm theo tiến trình và địa chỉ vi phạm. \\
+\hline
+Ảnh hưởng tới hệ thống 
+& Có nguy cơ gây treo hệ thống hoặc kernel panic. 
+& Chỉ tiến trình vi phạm bị chấm dứt, shell vẫn tiếp tục hoạt động. \\
+\hline
+Khả năng debug 
+& Khó xác định lỗi xảy ra tại vùng nhớ nào. 
+& Dễ dàng cô lập  hơn thông qua \textbf{scause}, \textbf{stval} và \textbf{Pid} của tiến trình do kernel cung cấp. \\
+\hline
+\end{tabular}
+\caption{So sánh hệ thống trước và sau khi bổ sung Guard Page}
+\end{table}
+
+Từ bảng so sánh có thể thấy cơ chế Guard Page giúp hệ thống phát hiện lỗi bộ nhớ chính xác hơn, đồng thời hạn chế việc một tiến trình lỗi làm ảnh hưởng tới toàn bộ hệ thống.
+
+\section{Đánh giá tính ổn định lâu dài của hệ thống}
+
+Để đánh giá tính ổn định lâu dài, nhóm không chỉ chạy một lần các chương trình kiểm thử mà còn thực hiện kiểm thử lặp lại nhiều lần. Mục tiêu là quan sát xem hệ thống có duy trì được hoạt động ổn định sau nhiều lần phát sinh Page Fault hay không.
+
+Trong các lần kiểm thử, khi chương trình gây Stack Overflow được thực thi, tiến trình vi phạm bị phát hiện và chấm dứt. Sau đó, shell vẫn quay lại trạng thái chờ lệnh, cho thấy kernel không bị panic và hệ thống vẫn có thể tiếp tục nhận lệnh mới từ người dùng.
+
+Đối với chương trình kiểm thử NULL pointer, hệ thống ghi nhận lỗi Store Page Fault với mã nguyên nhân tương ứng. Việc xử lý lỗi được thực hiện trong kernel và tiến trình gây lỗi bị loại bỏ. Điều này cho thấy cơ chế xử lý Page Fault đã hoạt động đúng vai trò cô lập lỗi.
+
+Một điểm quan trọng trong quá trình đánh giá là tránh hiện tượng tiến trình lỗi bị lặp lại liên tục. Nếu chỉ đánh dấu tiến trình bằng biến \texttt{killed}, tiến trình có thể quay lại user mode và tiếp tục gây lỗi. Vì vậy, nhóm sử dụng hướng xử lý kết thúc tiến trình trực tiếp bằng cơ chế tương tự \texttt{kexit(-1)}. Cách làm này giúp hệ thống tránh vòng lặp lỗi và thu hồi tài nguyên của tiến trình vi phạm.
+
+Kết quả thực nghiệm cho thấy hệ thống sau cải tiến có khả năng duy trì ổn định trong các trường hợp kiểm thử cơ bản. Tiến trình lỗi bị cô lập, shell vẫn hoạt động và không ghi nhận hiện tượng sập toàn bộ hệ thống trong quá trình kiểm thử.
+
+Dưới đây là bảng tổng hợp kết quả kiểm thử hệ thống nhằm đánh giá tính ôn định lâu dài. Nhóm em dùng file \textbf{master\_test.c} \~
+kịch bản điều phối linh hoạt giữa 2 thuận toán kiểm thử là stackoverflow và test\_pgflt. Kết quả tạo được đa dạng các kịch bản kiểm thử khác nhau:
+\begin{itemize}
+    \item T1 chạy 1 tiến trình gây stackoverflow hoặc null point đơn lẻ.
+    \begin{itemize}
+        \item \textbf{stackoverflow}
+        \item \textbf{ test\_pgflt}
+    \end{itemize}
+    \item T2 chạy 3 tiến trình gây lỗi.
+    \begin{itemize}
+        \item \textbf{master\_test t2 stackoverflow}
+        \item \textbf{ master\_test t2 test\_pgflt}
+    \end{itemize}
+    \item T3 chạy song song một tiến trình bình thường với một tiến trình lỗi.
+    \begin{itemize}
+        \item \textbf{master\_test t3 stackoverflow}
+        \item \textbf{master\_test t3 test\_pgflt}
+    \end{itemize}
+    \item T4 chạy 30 tiến trình lỗi.
+    \begin{itemize}
+        \item \textbf{master\_test t4 stackoverflow}
+        \item \textbf{master\_test t4 test\_pgflt}
+    \end{itemize}
+\end{itemize}
+
+% --- MÃ CHÈN BẢNG KẾT QUẢ KIỂM THỬ (xltabular) ---
+% Tăng khoảng cách giữa các dòng để chữ không bị che khuất
+\renewcommand{\arraystretch}{1.5} 
+
+% Cấu hình 7 cột: ép lề, căn trái chống lỗi chữ và tự động xuống dòng
+\begin{xltabular}{\textwidth}{|>{\raggedright\arraybackslash}p{1.4cm}|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|c|>{\raggedright\arraybackslash}X|c|>{\raggedright\arraybackslash}X|}
+    
+    % Caption và Label phải đặt BÊN TRONG xltabular
+    \caption{Bảng tổng hợp kết quả kiểm thử hệ thống}
+    \label{tab:ket_qua_test} \\
+    \hline
+    \textbf{Mã test} & \textbf{Kết quả mong đợi} & \textbf{Kết quả thực tế} & \textbf{Có panic?} & \textbf{Ảnh hưởng tiến trình khác} & \textbf{Đánh giá} & \textbf{Minh chứng log} \\
+    \hline
+    \endfirsthead % Kết thúc header của trang đầu tiên
+    
+    % --- Tiêu đề lặp lại ở các trang sau ---
+    \multicolumn{7}{c}{\textit{Tiếp nối Bảng \ref{tab:ket_qua_test} từ trang trước}} \\
+    \hline
+    \textbf{Mã test} & \textbf{Kết quả mong đợi} & \textbf{Kết quả thực tế} & \textbf{Có panic?} & \textbf{Ảnh hưởng tiến trình khác} & \textbf{Đánh giá} & \textbf{Minh chứng log} \\
+    \hline
+    \endhead 
+    
+    % --- Dòng chữ hiển thị ở cuối trang nếu bảng bị ngắt ---
+    \hline
+    \multicolumn{7}{r}{\textit{Tiếp tục ở trang sau...}} \\
+    \endfoot 
+    
+    % --- Chân bảng ở trang cuối cùng ---
+    \hline
+    \endlastfoot
+
+    % ==============================================
+    % NỘI DUNG BẢNG
+    % ==============================================
+    
+    % --- Dòng T1 ---
+    T1 (Chạy 1 tiến trình lỗi) & 
+    Tiến trình lỗi bị tiêu diệt dứt điểm; kernel không bị panic. & 
+    Thuật toán bắt chuẩn xác lỗi tràn ngăn xếp (stval: 0x2ff8) và con trỏ NULL. Kernel gọi kexit(-1) tiêu diệt đúng PID vi phạm (PID: 3 và 4). & 
+    Không & 
+    Không. Shell lập tức trả lại dấu nhắc lệnh \$ để chờ lệnh mới. & 
+    Đạt & 
+    [KERNEL CANH BAO] FATAL: STACK OVERFLOW DETECTED! -> Tien trinh: stackoverflow (PID: 3) \\
+    \hline
+    
+    % --- Dòng T2 ---
+    T2 (3 tiến trình cùng gây lỗi) & 
+    Kernel xử lý độc lập từng tiến trình; shell vẫn sống. & 
+    Xảy ra giao thoa hiển thị (Interleaved Output) ở User Space do chạy đa nhiệm. Kernel bắt gọn tuần tự 3 tiến trình lỗi (VD: PID 11, 12, 10) và in log ngay ngắn. & 
+    Không & 
+    Không. 3 tiến trình bị hủy độc lập, shell dọn dẹp sạch sẽ cả 3 tiến trình con. & 
+    Đạt & 
+    (Chữ bị giao thoa ở user space) [KERNEL CANH BAO] FATAL... (PID: 11) [KERNEL CANH BAO] FATAL... (PID: 12) --- Ket thuc T2: Shell van song... --- \\
+    \hline
+    
+    % --- Dòng T3 ---
+    T3 (Lỗi xen kẽ bình thường) & 
+    Tiến trình bình thường vẫn hoàn thành nhiệm vụ, tiến trình lỗi bị ngắt. & 
+    Cách ly tài nguyên hoàn hảo. Tiến trình lỗi bị ngắt ngay lập tức, trong khi tiến trình bình thường vẫn tiếp tục đếm đủ 3 bước. & 
+    Không & 
+    Hoàn toàn cách ly. Tiến trình bình thường không bị gián đoạn hay mất dữ liệu. & 
+    Đạt & 
+    [Tien trinh Binh thuong] Dang lam viec (buoc 1)... [KERNEL CANH BAO] FATAL... [Tien trinh Binh thuong] Hoan thanh an toan! \\
+    \hline
+    
+    % --- Dòng T4 ---
+    T4 (Stress test 30 vòng) & 
+    Không treo hệ thống; không phát sinh kernel panic do rò rỉ RAM. & 
+    Hệ thống chịu tải xuất sắc. Sinh và diệt liên tục 30 tiến trình cho mỗi loại lỗi. Cơ chế dọn rác hoạt động mượt mà, không tràn RAM. & 
+    Không & 
+    Độc lập tuyệt đối. Sau hàng chục chu kỳ ngắt tài nguyên liên tục, hệ thống vẫn phản hồi nhanh chóng. & 
+    Đạt & 
+    [System] Da hoan thanh 10 vong lap... [System] Da hoan thanh 30 vong lap... --- Ket thuc T4: He thong khong bi Kernel Panic! --- \\
+
+\end{xltabular}
+
+\section{Quá trình kiểm thử và tối ưu hóa}
+Tổng quát:
+Phát triển kịch bản kiểm thử stackoverflow.c;  test\_pgflt.c nạp thẳng vào luồng biên dịch của xv6 để chủ động ép lỗi hệ thống.
+\begin{itemize}
+    \item Tối ưu mã nguồn: Can thiệp trực tiếp vào luồng xử lý usertrap(), phân loại rạch ròi nguyên nhân gây lỗi bộ nhớ và gọi trực tiếp hàm kexit(-1) ngay tại khối lệnh xử lý.
+    \item System:
+    \begin{itemize}
+        \item In log cảnh báo chuẩn xác (stackoverflow hoặc segmentation fault).
+        \item Tiêu diệt an toàn, nhanh chóng tiến trình vi phạm mà không gây sập kernel (kernel panic).
+    \end{itemize}
+\end{itemize}
+Trong quá trình kiểm thử, nhóm tiến hành chạy các chương trình kiểm thử người dùng như \texttt{stackoverflow.c} và \texttt{test\_pgflt.c}. Các chương trình này được thêm vào danh sách chương trình người dùng của xv6 để có thể biên dịch và chạy trực tiếp trong môi trường giả lập.
+
+Quy trình kiểm thử được thực hiện theo các bước:
+
+\begin{enumerate}
+    \item Biên dịch lại hệ điều hành xv6 sau khi bổ sung mã nguồn kiểm thử.
+    \item Khởi động xv6 trong môi trường giả lập.
+    \item Chạy chương trình kiểm thử Stack Overflow.
+    \item Quan sát thông báo lỗi từ kernel và trạng thái shell sau khi tiến trình bị chấm dứt.
+    \item Chạy chương trình kiểm thử NULL pointer.
+    \item Đối chiếu mã lỗi Page Fault và địa chỉ gây lỗi.
+    \item Lặp lại quá trình kiểm thử để đánh giá độ ổn định.
+\end{enumerate}
+
+Trong quá trình tối ưu hóa, nhóm tập trung vào hai vấn đề chính. Thứ nhất là cải thiện thông báo lỗi để kernel in ra thông tin dễ hiểu hơn, giúp người dùng biết được tiến trình nào gây lỗi và địa chỉ lỗi nằm ở đâu. Thứ hai là tối ưu cách chấm dứt tiến trình lỗi thay vì hệ thống bị rơi vào luồng xử lý ngắt không mong muốn, thuật toán chủ động bắt lỗi và kill tiến trình ngay lập tức, đảm bảo an toàn cho các tiến trình khác đang chạy.
+
+Sau khi tối ưu, hệ thống đạt được các kết quả sau:
+
+\begin{itemize}
+    \item Phát hiện được lỗi Stack Overflow khi stack chạm vào Guard Page.
+    \item Phát hiện được lỗi truy cập địa chỉ không hợp lệ như NULL pointer.
+    \item In ra thông tin cảnh báo giúp hỗ trợ quá trình debug.
+    \item Chấm dứt tiến trình vi phạm mà không làm sập kernel.
+    \item Shell vẫn tiếp tục hoạt động sau khi tiến trình lỗi bị xử lý.
+\end{itemize}
+
+Nhìn chung, quá trình kiểm thử và tối ưu hóa cho thấy cơ chế Guard Page đã đáp ứng được mục tiêu ban đầu của đề tài. Hệ thống có khả năng phát hiện lỗi truy cập bộ nhớ sai, xử lý tiến trình vi phạm an toàn và duy trì tính ổn định của xv6 trong các tình huống kiểm thử.
+
+\textbf{Quy trình thực hiện:}
+\begin{itemize}
+    \item Bước 1: Mở thư mục mã nguồn của xv6-RISCV, tìm đến thư mục \textbf{user}: \textbf{code .}
+    \item Bước 2: tạo các file kiểm thử: stackoverflow.c và test\_pgflt.c.
+   
+    
+    \item Bước 3: Mở file Makefile để cập nhật file.c cần đi biên dịch: \textbf{nano Makefile} 
+
+    \item Dọn dẹp (nếu cần) và biên dịch toàn bộ mã nguồn:\textbf{make clean}\\ \textbf{make qemu}
+    \item Chạy từng kịch bản test: 
+   
+   
+
+\end{itemize}

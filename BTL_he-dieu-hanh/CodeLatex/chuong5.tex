@@ -1,0 +1,18 @@
+\chapter{Kết luận}
+
+\section{Kết luận chung và kết quả đạt được}
+Qua quá trình tìm hiểu và thực nghiệm, đề tài "Implementing guard pages to detect stack overflow and invalid access" đã hoàn thành tốt các mục tiêu đề ra ban đầu, giải quyết thành công điểm yếu về quản lý ngăn xếp của hệ điều hành xv6 nguyên bản. Nhóm đã đạt được những kết quả cụ thể như sau:
+\begin{itemize}
+    \item Cải tiến cơ chế cấp phát tĩnh: Can thiệp thành công vào tệp exec.c, áp dụng chiến lược cấp phát dư thừa và tước quyền truy cập (PTE\_U) để thiết lập một trang bảo vệ (Guard Page) vô hình nằm ngay dưới đáy ngăn xếp của người dùng.
+    \item Xây dựng thuật toán phân loại lỗi: Sửa đổi trình xử lý ngắt usertrap() trong trap.c, giúp kernel nhận diện chính xác mã ngắt phần cứng (13 và 15). Thuật toán đã đối chiếu thành công địa chỉ vi phạm để phân biệt rạch ròi giữa lỗi Tràn ngăn xếp (Stack Overflow) và Lỗi truy cập vùng nhớ bất hợp pháp (Segmentation Fault).
+    \item Đảm bảo tính ổn định của hệ thống: Thay vì để tiến trình rơi vào vòng lặp lỗi vô tận, cơ chế phản hồi chủ động gọi trực tiếp hàm kexit(-1) để cô lập và tiêu diệt tiến trình vi phạm ngay tại chỗ. Kết quả kiểm thử cho thấy hệ thống không bị Kernel Panic, shell vẫn tiếp tục nhận lệnh bình thường, đảm bảo an toàn cho các tiến trình chạy song song.
+\end{itemize}
+
+\section{Hạn chế và hướng phát triển}
+Mặc dù cơ chế Guard Page đã hoạt động chính xác theo thiết kế, giải pháp hiện tại của nhóm vẫn còn một số điểm hạn chế do giới hạn về thời gian và phạm vi đề tài:
+\begin{itemize}
+    \item Kích thước ngăn xếp cố định: Giải pháp hiện tại chỉ dừng ở việc "phát hiện và tiêu diệt" tiến trình khi chạm ranh giới. Trong thực tế, nhiều ứng dụng hợp lệ cần dung lượng stack lớn hơn 1 trang nhớ. Việc kill ngay lập tức có thể làm gián đoạn các chương trình nặng.
+    \item Chưa bảo vệ được Kernel Stack: Đề tài mới chỉ tập trung giải quyết vấn đề tràn ngăn xếp trong không gian người dùng (User Space), vùng ngăn xếp của nhân (Kernel Stack) vẫn chưa được thiết lập Guard Page để bảo vệ toàn diện.
+\end{itemize}
+
+

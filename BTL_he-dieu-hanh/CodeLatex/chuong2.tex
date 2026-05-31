@@ -1,0 +1,56 @@
+\chapter{CƠ SỞ LÝ THUYẾT}
+
+\section{Bộ nhớ ảo và phân trang trong hệ điều hành}
+Trong hệ điều hành hiện đại, mỗi tiến trình không trực tiếp truy cập vào bộ nhớ vật lý mà làm việc trên một không gian địa chỉ ảo riêng. Cơ chế bộ nhớ ảo giúp hệ điều hành cô lập các tiến trình với nhau, tránh việc một tiến trình có thể ghi đè hoặc đọc dữ liệu của tiến trình khác.
+
+Để ánh xạ địa chỉ ảo sang địa chỉ vật lý, hệ điều hành sử dụng bảng trang. Không gian địa chỉ ảo được chia thành các trang có kích thước cố định. Khi CPU truy cập một địa chỉ ảo, phần cứng quản lý bộ nhớ sẽ tra cứu bảng trang để tìm trang vật lý tương ứng. Nếu địa chỉ đó không hợp lệ, không được ánh xạ hoặc không có quyền truy cập phù hợp, phần cứng sẽ sinh ra một ngoại lệ gọi là Page Fault.
+
+Trong xv6, mỗi tiến trình có một bảng trang riêng. Điều này cho phép kernel kiểm soát vùng nhớ nào của tiến trình được phép sử dụng và vùng nhớ nào cần được bảo vệ.
+
+\section{Stack và lỗi Stack Overflow}
+Mỗi tiến trình khi chạy đều có vùng stack để lưu trữ biến cục bộ, tham số hàm, địa chỉ trả về và thông tin phục vụ quá trình gọi hàm. Stack thường tăng hoặc giảm theo một hướng cố định trong không gian địa chỉ ảo.
+
+Stack Overflow xảy ra khi chương trình sử dụng quá nhiều bộ nhớ stack. Nguyên nhân phổ biến là gọi đệ quy quá sâu hoặc khai báo biến cục bộ quá lớn. Nếu không có cơ chế bảo vệ, stack có thể phát triển vượt quá giới hạn cho phép và ghi đè sang vùng nhớ khác. Điều này có thể làm hỏng dữ liệu, gây lỗi khó phát hiện hoặc khiến hệ thống hoạt động không ổn định.
+
+Trong hệ điều hành, việc phát hiện sớm Stack Overflow là rất quan trọng vì nó giúp ngăn chặn tiến trình lỗi làm ảnh hưởng đến kernel hoặc các tiến trình khác.
+
+
+
+\section{Guard Page}
+Guard Page là một trang bộ nhớ được đặt tại ranh giới của một vùng nhớ quan trọng, ví dụ như vùng stack. Trang này không được ánh xạ hoặc không được cấp quyền truy cập. Vì vậy, khi chương trình truy cập vượt quá giới hạn stack và chạm vào Guard Page, phần cứng sẽ sinh ra Page Fault.
+
+Cơ chế Guard Page hoạt động như một vùng đệm bảo vệ. Thay vì để stack tiếp tục phát triển và ghi đè sang vùng nhớ hợp lệ khác, Guard Page khiến lỗi được phát hiện ngay tại thời điểm truy cập sai. Nhờ đó, hệ điều hành có thể xác định tiến trình vi phạm và xử lý nó một cách an toàn.
+
+Trong đề tài này, Guard Page được sử dụng để phát hiện lỗi Stack Overflow trong xv6. Khi tiến trình truy cập vào vùng Guard Page, kernel nhận biết đây là truy cập bộ nhớ không hợp lệ và chấm dứt tiến trình lỗi thay vì để hệ thống bị treo hoặc panic.
+
+\section{Page Fault và cơ chế xử lý trap}
+Page Fault là một loại ngoại lệ xảy ra khi tiến trình truy cập vào địa chỉ bộ nhớ không hợp lệ. Một số trường hợp có thể gây Page Fault gồm:
+\begin{itemize}
+    \item Truy cập vào địa chỉ chưa được ánh xạ trong bảng trang.
+    \item Truy cập vào trang không có quyền đọc, ghi hoặc thực thi phù hợp.
+    \item Truy cập vào Guard Page.
+    \item Truy cập NULL pointer, ví dụ địa chỉ 0x0.
+\end{itemize}
+Trong xv6 trên kiến trúc RISC-V, khi Page Fault xảy ra, CPU chuyển quyền điều khiển từ user mode sang kernel mode thông qua cơ chế trap. Kernel sau đó đọc các thanh ghi đặc biệt để xác định nguyên nhân lỗi. Hai thanh ghi quan trọng là:
+\begin{itemize}
+    \item \textbf{scause:} Cho biết nguyên nhân gây trap.
+    \item \textbf{stval:} Lưu địa chỉ gay ra lỗi.
+\end{itemize}
+Ví dụ, lỗi Store Page Fault thường có mã scause = 15, còn địa chỉ gây lỗi sẽ được lưu trong stval. Dựa vào các thông tin này, kernel có thể phân biệt giữa lỗi truy cập bộ nhớ thông thường, lỗi NULL pointer hoặc lỗi Stack Overflow do chạm vào Guard Page.
+\section{Xử lý tiến trình lỗi}
+Khi phát hiện tiến trình truy cập bộ nhớ không hợp lệ, hệ điều hành cần xử lý sao cho lỗi không lan rộng ra toàn hệ thống. Một cách xử lý phổ biến là chấm dứt tiến trình gây lỗi và thu hồi tài nguyên của nó.
+
+Trong xv6, nếu chỉ đánh dấu tiến trình là đã bị kill, tiến trình có thể chưa dừng ngay lập tức và có khả năng tiếp tục quay lại user space. Điều này có thể dẫn đến tình trạng tiến trình lặp lại lỗi nhiều lần, gây ra vòng lặp trap hoặc làm hệ thống mất ổn định.
+
+Vì vậy, trong đề tài này, nhóm sử dụng hướng xử lý mạnh hơn là kết thúc tiến trình vi phạm ngay trong kernel bằng hàm kexit(-1). Cách làm này giúp tiến trình lỗi được loại bỏ dứt điểm, tránh hiện tượng hàm lặp ngắt vô tận và đảm bảo shell vẫn có thể tiếp tục hoạt động bình thường.
+\section{Ý nghĩa của cơ chớ Guard Page trong xv6}
+Việc bổ sung Guard Page vào xv6 giúp hệ điều hành có khả năng phát hiện và cô lập lỗi bộ nhớ tốt hơn. Cụ thể, cơ chế này mang lại các lợi ích sau:
+\begin{itemize}
+\item Phát hiện Stack Overflow ngay khi stack vượt quá giới hạn.
+\item Ngăn tiến trình lỗi ghi đè sang vùng nhớ khác.
+\item Hỗ trợ debug thông qua thông tin Page Fault như scause và stval.
+\item Tránh kernel panic trong một số tình huống truy cập bộ nhớ sai.
+\item Chỉ chấm dứt tiến trình vi phạm, không làm ảnh hưởng đến các tiến trình bình thường.
+\item Tăng tính ổn định và khả năng bảo vệ bộ nhớ của hệ điều hành.
+\end{itemize}
+Nhìn chung, Guard Page là một kỹ thuật đơn giản nhưng hiệu quả trong quản lý bộ nhớ. Trong phạm vi xv6, việc triển khai Guard Page giúp minh họa rõ vai trò của bảng trang, cơ chế trap và xử lý Page Fault trong việc bảo vệ hệ thống khỏi các lỗi truy cập bộ nhớ.

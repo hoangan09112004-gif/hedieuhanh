@@ -1,0 +1,84 @@
+% --- MÃ CHÈN BẢNG (đặt tại nơi bạn muốn hiển thị trong tài liệu) ---
+% Tăng khoảng cách giữa các dòng để chữ không bị che khuất
+\renewcommand{\arraystretch}{1.5} 
+
+% Không dùng \begin{table} và \centering, xltabular sẽ tự động tràn full trang
+\begin{xltabular}{\textwidth}{|c|X|>{\raggedright\arraybackslash}p{3.5cm}|c|}
+    
+    % Caption và Label phải đặt BÊN TRONG xltabular
+    \caption{Bảng phân công công việc}
+    \label{tab:phan_cong_cong_viec} \\
+    \hline
+    \textbf{Tuần} & \textbf{Công việc} & \textbf{Thành viên} & \textbf{Tỷ lệ (\%)} \\
+    \hline
+    \endfirsthead % Kết thúc header của trang đầu tiên
+    
+    % --- Tiêu đề lặp lại ở các trang sau ---
+    \multicolumn{4}{c}{\textit{Tiếp nối Bảng \ref{tab:phan_cong_cong_viec} từ trang trước}} \\
+    \hline
+    \textbf{Tuần} & \textbf{Công việc} & \textbf{Thành viên} & \textbf{Tỷ lệ (\%)} \\
+    \hline
+    \endhead 
+    
+    % --- Dòng chữ hiển thị ở cuối trang nếu bảng bị ngắt ---
+    \hline
+    \multicolumn{4}{r}{\textit{Tiếp tục ở trang sau...}} \\
+    \endfoot 
+    
+    % --- Chân bảng ở trang cuối cùng ---
+    \hline
+    \endlastfoot
+
+    % ==============================================
+    % NỘI DUNG BẢNG
+    % ==============================================
+    
+    % --- TUẦN 1 ---
+    \multirow{3}{*}{1} 
+    & Thiết lập bảng Jira, định nghĩa các Epics/Tasks. Khởi tạo dự án trên Figma. Nghiên cứu tài liệu về cách thức hệ điều hành cấp phát không gian địa chỉ cho một tiến trình mới. & Nguyễn Thành Trung & 40 \\ \cline{2-4} 
+    & Phụ trách cài đặt môi trường Ubuntu, clone mã nguồn và đảm bảo việc biên dịch (make) thành công lần đầu tiên mà không bị lỗi. & Hoàng Ngọc An & 30 \\ \cline{2-4}
+    & Nghiên cứu cơ chế sinh ngắt (trap/interrupt) khi xảy ra lỗi Page Fault & Đinh Tiến Thành & 30 \\
+    \hline
+    
+    % --- TUẦN 2 ---
+    \multirow{3}{*}{2} 
+    & Phụ trách nghiên cứu logic cấp phát tổng thể. Phân tích hàm tạo tiến trình và đề xuất giải pháp cấp phát dư thừa không gian bộ nhớ làm vùng đệm. & Nguyễn Thành Trung & 35 \\ \cline{2-4} 
+    & Tìm hiểu cơ chế phân quyền bộ nhớ trong xv6. Nghiên cứu cách can thiệp vào bảng phân trang (Page Table) để tước quyền truy cập người dùng đối với Guard Page. & Hoàng Ngọc An & 35 \\ \cline{2-4}
+    & Đảm bảo tính toàn vẹn của hệ thống. Chạy thử nghiệm và xác minh việc thay đổi logic cấp phát không gây ảnh hưởng đến các chương trình hệ thống cơ bản & Đinh Tiến Thành & 30 \\
+    \hline
+    
+    % --- TUẦN 3 ---
+    \multirow{3}{*}{3} 
+    & Phụ trách nghiên cứu file xử lý ngắt trung tâm và đề xuất luồng xử lý lỗi truy cập trang. & Hoàng Ngọc An & 30 \\ \cline{2-4}
+    & Xây dựng thuật toán nhận dạng nguyên nhân lỗi & Nguyễn Thành Trung & 30 \\ \cline{2-4}
+    & Thiết kế hành vi phản hồi của hệ điều hành và luồng chấm dứt tiến trình an toàn để tránh kernel panic & Đinh Tiến Thành & 40 \\ 
+    \hline 
+    
+    % --- TUẦN 4 ---
+    \multirow{3}{*}{4}
+    & Thiết kế lý thuyết và cấu trúc thuật toán (đệ quy vô hạn với vùng nhớ cục bộ) nhằm ép lỗi tràn stack nhanh nhất cho kịch bản kiểm thử. & Đinh Tiến Thành & 30 \\ \cline{2-4}
+    & Lập trình kịch bản stackoverflow.c, xử lý cờ biên dịch -Werror và tích hợp file vào hệ thống xv6 (Makefile) để chạy thực nghiệm. & Nguyễn Thành Trung & 30 \\ \cline{2-4}
+    & Cài đặt xử lý ngắt Page Fault (kernel/trap.c) và xây dựng unit test test\_pgflt.c. Tối ưu độ ổn định kernel (tránh Zombie Loop) và rà soát chuẩn mã nguồn & Hoàng Ngọc An & 40 \\
+    \hline 
+    
+    % --- TUẦN 5 ---
+    % Đã sửa đổi thành \multirow{2} do chỉ có 2 công việc được liệt kê
+    \multirow{3}{*}{5}
+    & Tổng hợp và chuẩn hóa phần minh chứng kỹ thuật (trên Figma), bao gồm: sơ đồ không gian địa chỉ ảo, luồng can thiệp cấp phát trong exec.c, luồng trap handling, kịch bản test stackoverflow và  kịch bản test\_pgflt.c. Phần này làm cơ sở để giải thích vì sao Guard Page có thể chặn truy cập sai và giúp kernel nhận diện địa chỉ lỗi thông qua stval và đêtrinhf bày cho báo cáo tổng & Nguyễn Thành Trung & 35 \\ \cline{2-4}
+    & Phụ trách tập hợp báo cáo Jira của các thành viên để lập bảng đối chiếu trước/sau cải tiến. Nội dung phân tích tập trung vào bốn tiêu chí: xử lý Stack Overflow, nhận diện NULL pointer, xử lý Zombie Loop và khả năng duy trì tính đa nhiệm của hệ thống. & Hoàng Ngọc An & 30 \\ \cline{2-4}
+    & Phụ trách thiết kế khung đánh giá độ ổn định lâu dài của xv6 sau khi tích hợp Guard Page. Xây dựng các kịch bản kiểm thử đa tiến trình T1-T4, xác định số vòng lặp, số process, tiêu chí pass/fail và các bằng chứng log cần thu thập trước khi nộp báo cáo cuối kỳ.& Đinh Tiến Thành & 35  \\
+    \hline
+    \multirow{3}{*}{6}
+    & Thiết kế dàn ý báo cáo, trình bày báo cáo tổng.(Tổng quan bài tập lớn, Thiết kế và cài đặt)& Nguyễn Thành Trung & 35\\ \cline{2-4} 
+    & Tập hợp mã nguồn và đóng gói mã nguồn lên github.& Hoàng Ngọc An & 35 \\ \cline{2-4}
+    & Tập hợp và sắp xếp trình bày phần cơ sở lý thuyết trong báo cáo. & Đinh Tiến Thành & 30\\
+    \hline 
+    \multirow{3}{*}{7}
+    & Bổ sung và chỉnh sửa báo cáo tổng.(Thiết kế và cài đặt, thực nghiệm và đánh giá, kết luận) & Nguyễn Thành Trung & 35 \\ \cline{2-4}
+    & Chỉnh sửa, bổ sung mã nguồn trên github và Kiểm tra tính chính xác của báo cáo demo. & Hoàng Ngọc An & 30\\ \cline{2-4}
+    & Tổng hợp, sắp xếp trình bày nội dung chương 4: Thực nghiệm và đánh giá. & Đinh Tiến Thành & 35 \\ \hline 
+    \multirow{3}{*}{8}
+    & Thiết kế, trình bày và đánh giá bản phân công công việc các tuần của từng thành viên, thực hành và lập bảng đánh giá tính ổn định lâu dài của hệ thống, đề xuất thuật toán master\_test để kết hợp kịch bản kiểm thử trên báo cáo tổng & Nguyễn Thành Trung & 35 \\ \cline{2-4}
+    & Quay và edit video minh chứng cho việc thực hành bài tập lớn và kiểm tra tính chính xác của báo cáo tổng. & Đinh Tiến Thành & 30.\\ \cline{2-4}
+    &  Thiết kế và trình bày slide để chuẩn bị cho buổi thuyết trình bài tập lớn. & Hoàng Ngọc An & 35 \\ \hline 
+\end{xltabular}
